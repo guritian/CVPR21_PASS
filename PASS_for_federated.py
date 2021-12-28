@@ -39,12 +39,12 @@ class protoAugSSL_for_federated:
         self.train_loader = None
         self.test_loader = None
 
-    def beforeTrain(self, classes):
+    def beforeTrain(self, classes,flag):
         self.model.eval()
-
         self.train_loader, self.test_loader = self._get_train_and_test_dataloader(classes)
-
-        self.model.Incremental_learning(4*10)
+        self.test_loader = self._get_test_dataloader([0,20])
+        if flag:
+            self.model.Incremental_learning(4*20)
         self.model.train()
         self.model.to(self.device)
 
@@ -68,6 +68,15 @@ class protoAugSSL_for_federated:
                                  batch_size=self.args.batch_size)
 
         return train_loader, test_loader
+    def _get_test_dataloader(self, classes):
+        self.test_dataset.getTestData(classes)
+
+
+        test_loader = DataLoader(dataset=self.test_dataset,
+                                 shuffle=True,
+                                 batch_size=self.args.batch_size)
+
+        return  test_loader
 
     def _get_test_dataloader(self, classes):
         self.test_dataset.getTestData_up2now(classes)
@@ -103,6 +112,7 @@ class protoAugSSL_for_federated:
 
 
     def train(self, current_task, old_class=0):
+
         opt = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=2e-4)
         scheduler = StepLR(opt, step_size=45, gamma=0.1)
         accuracy = 0
@@ -174,7 +184,7 @@ class protoAugSSL_for_federated:
 
             proto_aug = []
             proto_aug_label = []
-            index = list(range(old_class))
+            index = list(range(old_class[0],old_class[1]))
             for _ in range(self.args.batch_size):
                 np.random.shuffle(index)
                 temp = self.prototype[index[0]] + np.random.normal(0, 1, 512) * self.radius
@@ -201,8 +211,10 @@ class protoAugSSL_for_federated:
 
     # 单纯为了保存预训练的模型
     def pre_afterTrain_load(self):
-        path = self.args.save_path + self.file_name + '/'
         num = (int(self.class_label[0] / 10) + 1) % 2
+        file_name = "cifar100_10_client_index_%d"%(num)
+        path = self.args.save_path + file_name + '/'
+
         other_client_filename = path + '%d_model.pkl' % (num)
         self.old_model = torch.load(other_client_filename)
         self.old_model.to(self.device)

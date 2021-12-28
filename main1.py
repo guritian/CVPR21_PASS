@@ -69,7 +69,7 @@ def main():
 
         classes = [i*task_size,(i+1)*task_size]
         local_model_list[i].pre_beforeTrain(classes)
-        local_model_list[i].pretrain(2,classes)
+        local_model_list[i].pretrain(1,classes)
 
 
     # 中心下发prototype 给每个client
@@ -82,12 +82,19 @@ def main():
     #进行联邦学习的轮次
     for i in range(args.rounds):
 
-        for epoch in range(args.client_num):
+        for client in range(args.client_num):
             # 中心下发prototype 给每个client
             # 中心下发 别的client的模型给client i 进行知识融合 或者这里我们采用的是 增量学习的方式
             # 拿到上述的数据后 开始进行增量学习
-            local_model_list[i].beforeTrain(classes)
-            local_model_list[i].train(classes)
+            flag = False
+            if i == 0:
+                flag = True
+            if client == 0:
+                classes = [10,20]
+            else:
+                classes = [0,10]
+            local_model_list[i].beforeTrain(classes,flag)
+            local_model_list[i].train(current_task=1 ,old_class=[0,20])
 
 
 
